@@ -32,5 +32,7 @@ BOOL Unprotect_internal(void* address, size_t size, DWORD* oldProtect)
 BOOL Protect_internal(void* address, size_t size, DWORD oldProtect)
 {
 	DWORD dummy;
-	return VirtualProtect(address, size, oldProtect, &dummy);
+	BOOL result = VirtualProtect(address, size, oldProtect, &dummy);
+	FlushInstructionCache(GetCurrentProcess(), address, size);
+	return result;
 }

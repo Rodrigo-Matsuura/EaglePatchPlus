@@ -1,9 +1,16 @@
 CompileFlags:
+  CompilationDatabase: /home/matsu/EaglePatch
   Add:
     - -target
     - i686-pc-windows-msvc
     - -m32
+    - -nostdlib
+    - -fms-extensions
+    - -fms-compatibility
+    - -fasm-blocks
+    - -fmsc-version=1900
     - -I/home/matsu/EaglePatch/patcher
+    - -I/home/matsu/EaglePatch/EaglePatch/shared
     - -isystem/usr/include/wine/msvcrt
     - -isystem/usr/include/wine/windows
     - -isystem/usr/include/wine/windows/ddk
@@ -13,9 +20,7 @@ CompileFlags:
     - -D_CRT_NONSTDC_NO_DEPRECATE
     - -D_USE_32BIT_TIME_T
     - -D_MBCS
-    - -fms-extensions
-    - -fms-compatibility
-    - -fmsc-version=1900
+    - -D_NO_CRT_STDIO_INLINE
 
 ---
 If:

@@ -16,13 +16,14 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends g++-mingw-w64-i686 mingw-w64-i686-dev clang lld
+          sudo apt-get install -y --no-install-recommends g++-mingw-w64-i686 mingw-w64-i686-dev clang lld wine wine32
 
       - name: Grant execute permissions to build script
         run: chmod +x build_linux.sh
 
-      - name: Run Linux Build
+      - name: Run Linux Build and Unit Tests
         run: ./build_linux.sh
 
       - name: Upload AC1 artifact

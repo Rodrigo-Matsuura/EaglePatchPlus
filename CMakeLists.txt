@@ -39,9 +39,11 @@ set(SHARED_SOURCES
     EaglePatch/shared/console.h
     EaglePatch/shared/ini_reader.h
     EaglePatch/shared/utils.h
+    EaglePatch/shared/logger.h
     EaglePatch/shared/console.cpp
     EaglePatch/shared/ini_reader.cpp
     EaglePatch/shared/utils.cpp
+    EaglePatch/shared/logger.cpp
 )
 
 # Common include directories
@@ -153,6 +155,7 @@ if(BUILD_TESTING)
         tests/test_ini_reader.cpp
         EaglePatch/shared/ini_reader.cpp
         EaglePatch/shared/utils.cpp
+        EaglePatch/shared/logger.cpp
     )
     target_include_directories(EaglePatchTests PRIVATE EaglePatch/shared patcher)
     target_compile_definitions(EaglePatchTests PRIVATE WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS NOMINMAX)

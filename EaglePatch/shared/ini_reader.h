@@ -11,3 +11,7 @@ DWORD get_private_profile_string(LPCTSTR lpKeyName, LPCTSTR lpDefault, LPTSTR lp
 FLOAT get_private_profile_float(LPCTSTR lpKeyName, LPCTSTR lpDefault);
 
 void init_private_profile(HMODULE hModule);
+
+const wchar_t* get_ini_path();
+
+void set_custom_ini_path(const wchar_t* path);

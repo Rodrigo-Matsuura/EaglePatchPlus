@@ -7,6 +7,7 @@
 
 #include "../shared/ini_reader.h"
 #include "../shared/utils.h"
+#include "../shared/logger.h"
 
 //#define INCLUDE_CONSOLE // add ability to allocate console window
 
@@ -73,8 +74,6 @@ uintptr_t sAddresses::_BorderlessWindow_Engine_InitDirect3DDevice = 0;
 
 int NEEDED_KEYBOARD_SET = 0;
 static int g_FramerateLimit = 0;
-static bool g_FixAspectRatio = false;
-static float g_FOVMultiplier = 1.0f;
 
 auto ac_getNewDescriptor = (void*(__cdecl*)(uint32_t, uint32_t, uint32_t))0;
 auto ac_getDeleteDescriptor = (uint32_t(__thiscall*)(void*, void*))0;
@@ -193,8 +192,7 @@ struct Pad : ManagedObject
 
 		bool IsEmpty() const
 		{
-			//return fabsf(x) < 0.1f && fabsf(y) < 0.1f;
-			return x == 0.0f && y == 0.0f;
+			return (x > -0.15f && x < 0.15f && y > -0.15f && y < 0.15f);
 		}
 	};
 
@@ -300,13 +298,21 @@ struct PadProxyPC : Pad
 		if (pads[Joy1].pad)
 			pads[Joy1].pad->UpdatePad(pads[Joy1].pInputBindings);
 
-		// see if current pad is empty or disconnected
-		if (!pads[selectedPad].pad || pads[selectedPad].pad->IsEmpty())
+		bool joyConnected = (padXenon != nullptr && padXenon->m_PadState.Connected);
+
+		// If currently selected pad is gamepad but it got disconnected, revert to keyboard
+		if (selectedPad == Joy1 && !joyConnected)
 		{
-			uint32_t i = selectedPad == (uint32_t)NEEDED_KEYBOARD_SET ? Joy1 : (uint32_t)NEEDED_KEYBOARD_SET;
-			// if the other pad is connected and active, or if current pad is disconnected, switch
-			if (pads[i].pad && (!pads[i].pad->IsEmpty() || !pads[selectedPad].pad))
-				selectedPad = i;
+			selectedPad = (uint32_t)NEEDED_KEYBOARD_SET;
+		}
+		// If current pad is empty or disconnected, switch if the other connected pad has active input
+		else if (!pads[selectedPad].pad || pads[selectedPad].pad->IsEmpty())
+		{
+			uint32_t candidate = (selectedPad == (uint32_t)NEEDED_KEYBOARD_SET) ? (joyConnected ? Joy1 : (uint32_t)NEEDED_KEYBOARD_SET) : (uint32_t)NEEDED_KEYBOARD_SET;
+			if (candidate != selectedPad && pads[candidate].pad && !pads[candidate].pad->IsEmpty())
+			{
+				selectedPad = candidate;
+			}
 		}
 
 		if (pads[selectedPad].pad)
@@ -362,7 +368,10 @@ void __cdecl AddXenonPad()
 {
 	scimitar::padXenon = new scimitar::PadXenon(0);
 	if (!scimitar::pPad->AddPad(scimitar::padXenon, scimitar::Pad::PadType::XenonPad, L"XInput Controller 1", 5, 5))
+	{
 		ac_delete(scimitar::padXenon, nullptr, nullptr);
+		scimitar::padXenon = nullptr;
+	}
 }
 
 ASM(_addXenonJoy_Patch)
@@ -472,7 +481,7 @@ void __fastcall Hook_BorderlessWindow_InitDirect3DDevice(void* _this, void*, HWN
 
 	if (pSetWindowPos)
 	{
-		pSetWindowPos(hwnd, HWND_TOP, 0, 0, width, height, SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSENDCHANGING);
+		pSetWindowPos(hwnd, HWND_TOP, 0, 0, width, height, SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSENDCHANGING);
 	}
 
 	Ivk_Delegate_BorderlessWindow_InitDirect3DDevice(_this, hwnd, extra);
@@ -485,24 +494,25 @@ void patch()
 		if (sAddresses::_BorderlessWindow_Engine_InitDirect3DDevice != 0)
 		{
 			InterceptCall(&Ivk_Delegate_BorderlessWindow_InitDirect3DDevice, &Hook_BorderlessWindow_InitDirect3DDevice, sAddresses::_BorderlessWindow_Engine_InitDirect3DDevice);
+			LogInfo("Borderless window hook installed.");
+		}
+		else
+		{
+			LogWarn("Borderless window is currently only supported on AC2 Digital UPlay.");
 		}
 	}
-	if (get_private_profile_bool("LimitCpuCores", FALSE))
+
+	int cpuLimit = get_private_profile_int("LimitCpuCores", 0);
+	if (cpuLimit > 0)
 	{
-		ApplyCpuCoreLimit();
+		ApplyCpuCoreLimit(cpuLimit);
 	}
 
 	if (get_private_profile_bool("ImproveShadowMapResolution", FALSE))
 	{
 		Patch<uint32_t>(sAddresses::_shadowMapSize, 4096);
-
-		// cascade distances? didn't seem to change anything
-		//Patch<uint32_t>(0x157CD65 + 3, 45);
-		//Patch<uint32_t>(0x157CD6C + 3, 90);
+		LogInfo("Shadow map resolution patched to 4096.");
 	}
-
-	//PatchByte(0x2210A73, 0); // windowed... doesn't work
-	//Patch<uint32_t>(0x15D71F6, 71); // depth format
 
 	if (get_private_profile_bool("ImproveDrawDistance", TRUE))
 	{
@@ -516,11 +526,13 @@ void patch()
 		InjectHook(sAddresses::_AddHWGraphicObjectInstances_forceLod0, _AddHWGraphicObjectInstances_forceLod0, HOOK_JUMP);
 		InjectHook(sAddresses::_AddHWGraphicObjectInstances_checkIsCharacter, _AddHWGraphicObjectInstances_checkIsCharacter, HOOK_JUMP);
 		PatchJump(sAddresses::_GetLODLevelFromDistance_forceMaxLod, sAddresses::_GetLODLevelFromDistance_forceMaxLod + 0x44);
+		LogInfo("Max LOD draw distance patches applied.");
 	}
 
 	if (get_private_profile_bool("UPlayItems", TRUE))
 	{
 		InjectHook(sAddresses::HackPlayerOptionsSaveData, &HackPlayerOptionsSaveData); // scimitar::ac2::PlayerOptionsSaveData::Serialize()
+		LogInfo("UPlay bonus unlocks hook applied.");
 	}
 
 	NEEDED_KEYBOARD_SET = get_private_profile_int("KeyboardLayout", scimitar::PadSets::Keyboard1);
@@ -530,13 +542,20 @@ void patch()
 		NEEDED_KEYBOARD_SET = scimitar::PadSets::Keyboard4;
 
 	g_FramerateLimit = get_private_profile_int("FramerateLimit", 0);
-	g_FixAspectRatio = get_private_profile_bool("FixAspectRatio", FALSE);
-	g_FOVMultiplier = get_private_profile_float("FOVMultiplier", "1.0");
+
+	LogInfo("Config: KeyboardLayout=%d, FramerateLimit=%d",
+		NEEDED_KEYBOARD_SET, g_FramerateLimit);
+
+	if (!get_private_profile_bool("DisableXInputPatch", FALSE))
+	{
+		InjectHook(sAddresses::_addXenonJoy_Patch, &_addXenonJoy_Patch, PATCH_JUMP);
+		LogInfo("XInput controller hook injected.");
+	}
 
 	if (!get_private_profile_bool("DisableXInputPatch", FALSE) || g_FramerateLimit > 0)
 	{
-		InjectHook(sAddresses::_addXenonJoy_Patch, &_addXenonJoy_Patch, PATCH_JUMP);
 		InjectHook(sAddresses::_PadProxyPC_Patch, &scimitar::PadProxyPC::Update, PATCH_JUMP);
+		LogInfo("Input update hook injected.");
 	}
 
 	if (get_private_profile_bool("PS3Controls", FALSE) || get_private_profile_bool("PS4Controls", FALSE) || get_private_profile_bool("PS5Controls", FALSE))
@@ -549,17 +568,28 @@ void patch()
 		Patch<uint32_t>(sAddresses::_ps3_controls_analog[1], 0x17C);
 		Patch<uint32_t>(sAddresses::_ps3_controls_analog[2], 0x170);
 		Patch<uint32_t>(sAddresses::_ps3_controls_analog[3], 0x178);
+		LogInfo("PlayStation-style bumper/trigger swap controls patched.");
 	}
 
 	if (get_private_profile_bool("SkipIntroVideos", FALSE))
+	{
 		PatchByte(sAddresses::_skipIntroVideos, 0xEB);
+		LogInfo("SkipIntroVideos patch applied.");
+	}
 }
 
 void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 {
 	init_private_profile(hModule);
+	bool enableConsole = get_private_profile_bool("AllocConsole", FALSE);
+	bool enableLogging = get_private_profile_bool("EnableLogging", FALSE);
+	InitLogging(hModule, enableLogging, enableConsole);
+
+	LogInfo("EaglePatch+ AC2 initialized (Version: 1.4, Module: 0x%p, Executable: %s)",
+		hModule, exeVersion == DIGITAL_UPLAY ? "Digital UPlay" : "Retail Akella 1.01");
+
 #ifdef INCLUDE_CONSOLE
-	if (get_private_profile_bool("AllocConsole", FALSE))
+	if (enableConsole)
 		init_console();
 #endif
 	switch (exeVersion)
@@ -631,6 +661,7 @@ void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 			Gear::MemHook::pRef = (Gear::MemHook***)0x223A3A4;
 			break;
 		default:
+			LogError("Unknown executable version detected.");
 			return;
 	}
 	patch();
@@ -645,6 +676,10 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 			InitAddresses(DIGITAL_UPLAY, hinstDLL);
 		else if (MEMCMP32(0x004149F4 + 1, 0x01CA4FA0))
 			InitAddresses(RETAIL_1_01, hinstDLL);
+	}
+	else if (fdwReason == DLL_PROCESS_DETACH)
+	{
+		ShutdownLogging();
 	}
 
 	return TRUE;

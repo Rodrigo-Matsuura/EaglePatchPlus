@@ -1,7 +1,7 @@
 #include "ini_reader.h"
 #include <direct.h>
 #include <stdlib.h>
-
+#include <ctype.h>
 #include <string.h>
 
 #ifndef DLL_NAME
@@ -9,6 +9,31 @@
 #endif
 
 static wchar_t ini_path[MAX_PATH];
+
+static void TrimString(char* str)
+{
+	if (!str || !*str)
+		return;
+
+	// Trim leading whitespace
+	char* start = str;
+	while (*start && isspace((unsigned char)*start))
+	{
+		start++;
+	}
+
+	if (start != str)
+	{
+		memmove(str, start, strlen(start) + 1);
+	}
+
+	// Trim trailing whitespace
+	size_t len = strlen(str);
+	while (len > 0 && isspace((unsigned char)str[len - 1]))
+	{
+		str[--len] = '\0';
+	}
+}
 
 static const wchar_t* AnsiToWideHelper(const char* ansi, wchar_t* wideBuffer, size_t wideSize)
 {
@@ -31,8 +56,17 @@ static void WideToAnsi(const wchar_t* wide, char* ansi, size_t ansiSize)
 	}
 }
 
+static void EnsureIniPathInitialized()
+{
+	if (ini_path[0] == L'\0')
+	{
+		init_private_profile(NULL);
+	}
+}
+
 UINT get_private_profile_int(LPCTSTR lpKeyName, INT nDefault)
 {
+	EnsureIniPathInitialized();
 	wchar_t wKeyName[128];
 	wchar_t wSection[128];
 	const wchar_t* pwKeyName = AnsiToWideHelper(lpKeyName, wKeyName, 128);
@@ -42,23 +76,29 @@ UINT get_private_profile_int(LPCTSTR lpKeyName, INT nDefault)
 
 UINT get_private_profile_bool(LPCTSTR lpKeyName, INT nDefault)
 {
-	char value[16];
+	char value[64];
 	get_private_profile_string(lpKeyName, nDefault ? "1" : "0", value, sizeof(value));
-	if (_stricmp(value, "true") == 0 || _stricmp(value, "yes") == 0 || _stricmp(value, "on") == 0 || strcmp(value, "1") == 0)
+	TrimString(value);
+
+	if (_stricmp(value, "true") == 0 || _stricmp(value, "yes") == 0 || _stricmp(value, "on") == 0 ||
+		_stricmp(value, "enable") == 0 || _stricmp(value, "enabled") == 0 || strcmp(value, "1") == 0)
 	{
 		return TRUE;
 	}
-	if (_stricmp(value, "false") == 0 || _stricmp(value, "no") == 0 || _stricmp(value, "off") == 0 || strcmp(value, "0") == 0)
+	if (_stricmp(value, "false") == 0 || _stricmp(value, "no") == 0 || _stricmp(value, "off") == 0 ||
+		_stricmp(value, "disable") == 0 || _stricmp(value, "disabled") == 0 || strcmp(value, "0") == 0)
 	{
 		return FALSE;
 	}
-	return nDefault;
+	return nDefault ? TRUE : FALSE;
 }
 
 DWORD get_private_profile_string(LPCTSTR lpKeyName, LPCTSTR lpDefault, LPTSTR lpReturnedString, DWORD nSize)
 {
 	if (!lpReturnedString || nSize == 0)
 		return 0;
+
+	EnsureIniPathInitialized();
 
 	wchar_t wKeyName[128];
 	wchar_t wSection[128];
@@ -77,22 +117,28 @@ DWORD get_private_profile_string(LPCTSTR lpKeyName, LPCTSTR lpDefault, LPTSTR lp
 			return 0;
 	}
 
-	DWORD result = GetPrivateProfileStringW(pwSection, pwKeyName, pwDefault, wReturnedString, nSize, ini_path);
+	GetPrivateProfileStringW(pwSection, pwKeyName, pwDefault, wReturnedString, nSize, ini_path);
 	WideToAnsi(wReturnedString, lpReturnedString, nSize);
 
 	if (wReturnedString != wStackBuffer)
 	{
 		free(wReturnedString);
 	}
-	return result;
+	return (DWORD)strlen(lpReturnedString);
 }
 
 FLOAT get_private_profile_float(LPCTSTR lpKeyName, LPCTSTR lpDefault)
 {
 	CHAR lpReturnedString[MAX_PATH];
-
 	get_private_profile_string(lpKeyName, lpDefault, lpReturnedString, sizeof(lpReturnedString));
-
+	TrimString(lpReturnedString);
+	for (char* c = lpReturnedString; *c; c++)
+	{
+		if (*c == ',')
+		{
+			*c = '.';
+		}
+	}
 	return (FLOAT)atof(lpReturnedString);
 }
 
@@ -107,5 +153,18 @@ void init_private_profile(HMODULE hModule)
 	else
 	{
 		wcsncat_s(ini_path, sizeof(ini_path) / sizeof(wchar_t), L".ini", 4);
+	}
+}
+
+const wchar_t* get_ini_path()
+{
+	return ini_path;
+}
+
+void set_custom_ini_path(const wchar_t* path)
+{
+	if (path)
+	{
+		wcscpy_s(ini_path, sizeof(ini_path) / sizeof(wchar_t), path);
 	}
 }

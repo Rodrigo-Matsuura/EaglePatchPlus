@@ -3,36 +3,29 @@
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
+#include "logger.h"
 
 void LimitFramerate(int targetFps);
 
 template<typename TPad> inline void CheckXInputReconnect(TPad* pad)
 {
-	if (!pad)
+	if (!pad || pad->m_PadState.Connected)
 		return;
 
 	static DWORD lastCheckTime = 0;
 	DWORD now = GetTickCount();
-	if (now - lastCheckTime < 250)
+	if (now - lastCheckTime < 1000)
 		return;
 	lastCheckTime = now;
 
 	typedef DWORD(WINAPI * pfnXInputGetState)(DWORD dwUserIndex, XINPUT_STATE * pState);
-	typedef DWORD(WINAPI * pfnXInputGetCapabilities)(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES * pCapabilities);
 	static pfnXInputGetState pGetState = nullptr;
-	static pfnXInputGetCapabilities pGetCaps = nullptr;
 	static bool attempted = false;
 
 	if (!attempted)
 	{
 		attempted = true;
-		HMODULE hXInput = GetModuleHandleA("xinput1_3.dll");
-		if (!hXInput)
-			hXInput = GetModuleHandleA("xinput1_4.dll");
-		if (!hXInput)
-			hXInput = GetModuleHandleA("xinput9_1_0.dll");
-		if (!hXInput)
-			hXInput = LoadLibraryA("xinput1_3.dll");
+		HMODULE hXInput = LoadLibraryA("xinput1_3.dll");
 		if (!hXInput)
 			hXInput = LoadLibraryA("xinput1_4.dll");
 		if (!hXInput)
@@ -41,7 +34,11 @@ template<typename TPad> inline void CheckXInputReconnect(TPad* pad)
 		if (hXInput)
 		{
 			pGetState = (pfnXInputGetState)GetProcAddress(hXInput, "XInputGetState");
-			pGetCaps = (pfnXInputGetCapabilities)GetProcAddress(hXInput, "XInputGetCapabilities");
+			LogInfo("XInput module loaded successfully.");
+		}
+		else
+		{
+			LogWarn("Failed to locate or load any XInput DLL.");
 		}
 	}
 
@@ -49,21 +46,6 @@ template<typename TPad> inline void CheckXInputReconnect(TPad* pad)
 		return;
 
 	XINPUT_STATE state;
-
-	// 1. If currently connected, check if current slot is still connected
-	if (pad->m_PadState.Connected)
-	{
-		if (pGetState(pad->m_PadIndex, &state) == ERROR_SUCCESS)
-		{
-			return;
-		}
-		// Connection lost on current slot
-		pad->m_PadState.Connected = false;
-		pad->m_PadState.Removed = true;
-		pad->m_PadState.Inserted = false;
-	}
-
-	// 2. Not connected or connection lost: scan all 4 XInput slots (0 to 3) for any active controller
 	for (DWORD i = 0; i < 4; i++)
 	{
 		if (pGetState(i, &state) == ERROR_SUCCESS)
@@ -72,13 +54,10 @@ template<typename TPad> inline void CheckXInputReconnect(TPad* pad)
 			pad->m_PadState.Connected = true;
 			pad->m_PadState.Inserted = true;
 			pad->m_PadState.Removed = false;
-			if (pGetCaps)
-			{
-				pGetCaps(i, 1 /* XINPUT_FLAG_GAMEPAD */, &pad->m_PadState.Caps);
-			}
+			LogInfo("XInput controller detected and connected on slot %lu.", i);
 			return;
 		}
 	}
 }
 
-void ApplyCpuCoreLimit();
+void ApplyCpuCoreLimit(int maxCores = 0);

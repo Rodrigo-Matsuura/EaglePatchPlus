@@ -8,6 +8,7 @@
 
 #include "../shared/ini_reader.h"
 #include "../shared/utils.h"
+#include "../shared/logger.h"
 
 //#define INCLUDE_CONSOLE // add ability to allocate console window
 
@@ -66,8 +67,6 @@ auto ac_delete = (void(__cdecl*)(void*, void*, const char*))0;
 
 static int NEEDED_KEYBOARD_SET = 0;
 static int g_FramerateLimit = 0;
-static bool g_FixAspectRatio = false;
-static float g_FOVMultiplier = 1.0f;
 
 namespace scimitar
 {
@@ -139,8 +138,7 @@ struct Pad : ManagedObject
 
 		bool IsEmpty() const
 		{
-			//return fabsf(x) < 0.1f && fabsf(y) < 0.1f;
-			return x == 0.0f && y == 0.0f;
+			return (x > -0.15f && x < 0.15f && y > -0.15f && y < 0.15f);
 		}
 	};
 
@@ -244,13 +242,21 @@ struct PadProxyPC : Pad
 		if (pads[Joy1].pad)
 			pads[Joy1].pad->UpdatePad(pads[Joy1].pInputBindings);
 
-		// see if current pad is empty or disconnected
-		if (!pads[selectedPad].pad || pads[selectedPad].pad->IsEmpty())
+		bool joyConnected = (padXenon != nullptr && padXenon->m_PadState.Connected);
+
+		// If currently selected pad is gamepad but it got disconnected, revert to keyboard
+		if (selectedPad == Joy1 && !joyConnected)
 		{
-			uint32_t i = selectedPad == (uint32_t)NEEDED_KEYBOARD_SET ? Joy1 : (uint32_t)NEEDED_KEYBOARD_SET;
-			// if the other pad is connected and active, or if current pad is disconnected, switch
-			if (pads[i].pad && (!pads[i].pad->IsEmpty() || !pads[selectedPad].pad))
-				selectedPad = i;
+			selectedPad = (uint32_t)NEEDED_KEYBOARD_SET;
+		}
+		// If current pad is empty or disconnected, switch if the other connected pad has active input
+		else if (!pads[selectedPad].pad || pads[selectedPad].pad->IsEmpty())
+		{
+			uint32_t candidate = (selectedPad == (uint32_t)NEEDED_KEYBOARD_SET) ? (joyConnected ? Joy1 : (uint32_t)NEEDED_KEYBOARD_SET) : (uint32_t)NEEDED_KEYBOARD_SET;
+			if (candidate != selectedPad && pads[candidate].pad && !pads[candidate].pad->IsEmpty())
+			{
+				selectedPad = candidate;
+			}
 		}
 
 		if (pads[selectedPad].pad)
@@ -281,7 +287,10 @@ void __cdecl AddXenonPad()
 {
 	scimitar::padXenon = new scimitar::PadXenon(0);
 	if (!scimitar::pPad->AddPad(scimitar::padXenon, scimitar::Pad::PadType::XenonPad, L"XInput Controller 1", 5, 5))
+	{
 		ac_delete(scimitar::padXenon, nullptr, nullptr);
+		scimitar::padXenon = nullptr;
+	}
 }
 
 ASM(_addXenonJoy_Patch)
@@ -352,30 +361,39 @@ void patch()
 		NEEDED_KEYBOARD_SET = scimitar::PadSets::Keyboard4;
 
 	g_FramerateLimit = get_private_profile_int("FramerateLimit", 0);
-	g_FixAspectRatio = get_private_profile_bool("FixAspectRatio", FALSE);
-	g_FOVMultiplier = get_private_profile_float("FOVMultiplier", "1.0");
 
-	if (get_private_profile_bool("LimitCpuCores", FALSE))
+	LogInfo("Config: KeyboardLayout=%d, FramerateLimit=%d", NEEDED_KEYBOARD_SET, g_FramerateLimit);
+
+	int cpuLimit = get_private_profile_int("LimitCpuCores", 0);
+	if (cpuLimit > 0)
 	{
-		ApplyCpuCoreLimit();
+		ApplyCpuCoreLimit(cpuLimit);
+	}
+
+	if (!get_private_profile_bool("DisableXInputPatch", FALSE))
+	{
+		InjectHook(sAddresses::_addXenonJoy_Patch, &_addXenonJoy_Patch, PATCH_JUMP);
+		LogInfo("XInput controller hook injected.");
 	}
 
 	if (!get_private_profile_bool("DisableXInputPatch", FALSE) || g_FramerateLimit > 0)
 	{
-		InjectHook(sAddresses::_addXenonJoy_Patch, &_addXenonJoy_Patch, PATCH_JUMP);
 		InjectHook(sAddresses::_PadProxyPC_Patch, &scimitar::PadProxyPC::Update, PATCH_JUMP);
+		LogInfo("Input update hook injected.");
 	}
 
 	// fix multisampling
 	PatchByte(sAddresses::_multisampling1, 0xEB);
 	PatchBytes(sAddresses::_multisampling2, (unsigned char*)"\xb9\x01\x00\x00\x00\x90", 6);
 	Nop(sAddresses::_multisampling3, 3);
+	LogInfo("Multisampling patches applied.");
 
 	if (get_private_profile_bool("ImproveShadowMapResolution", FALSE))
 	{
 		if (sAddresses::_shadowMapSize != 0)
 		{
 			Patch<uint32_t>(sAddresses::_shadowMapSize, 4096);
+			LogInfo("Shadow map resolution patched to 4096.");
 		}
 	}
 
@@ -389,20 +407,34 @@ void patch()
 		Patch<uint32_t>(sAddresses::_ps3_controls_analog[1], 0xEC);
 		Patch<uint32_t>(sAddresses::_ps3_controls_analog[2], 0xE0);
 		Patch<uint32_t>(sAddresses::_ps3_controls_analog[3], 0xE8);
+		LogInfo("PlayStation-style bumper/trigger swap controls patched.");
 	}
 
 	if (get_private_profile_bool("SkipIntroVideos", FALSE))
+	{
 		PatchByte(sAddresses::_skipIntroVideos, 0xEB);
+		LogInfo("SkipIntroVideos patch applied.");
+	}
 
 	if (get_private_profile_bool("DisableTelemetry", TRUE))
-		PatchByte(sAddresses::_disableTelemetry, 1);
+	{
+		PatchByte(sAddresses::_disableTelemetry, 0);
+		LogInfo("DisableTelemetry patch applied.");
+	}
 }
 
 void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 {
 	init_private_profile(hModule);
+	bool enableConsole = get_private_profile_bool("AllocConsole", FALSE);
+	bool enableLogging = get_private_profile_bool("EnableLogging", FALSE);
+	InitLogging(hModule, enableLogging, enableConsole);
+
+	LogInfo("EaglePatch+ AC1 initialized (Version: 1.4, Module: 0x%p, Executable: %s)",
+		hModule, exeVersion == DIGITAL_DX9 ? "Digital DX9" : "Digital DX10");
+
 #ifdef INCLUDE_CONSOLE
-	if (get_private_profile_bool("AllocConsole", FALSE))
+	if (enableConsole)
 		init_console();
 #endif
 
@@ -434,7 +466,7 @@ void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 			sAddresses::_ps3_controls_analog[2] = 0x98D07B + 4;
 			sAddresses::_ps3_controls_analog[3] = 0x98D092 + 4;
 			sAddresses::_skipIntroVideos = 0x405495;
-			sAddresses::_disableTelemetry = 0x01A11974;
+			sAddresses::_disableTelemetry = 0x017382D8;
 			break;
 		case DIGITAL_DX10:
 			sAddresses::Pad_UpdateTimeStamps = 0x912620;
@@ -462,7 +494,7 @@ void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 			sAddresses::_ps3_controls_analog[2] = 0x96D88B + 4;
 			sAddresses::_ps3_controls_analog[3] = 0x96D8A2 + 4;
 			sAddresses::_skipIntroVideos = 0x4054B5;
-			sAddresses::_disableTelemetry = 0x0199E924;
+			sAddresses::_disableTelemetry = 0x170D798;
 
 			if (get_private_profile_bool("D3D10_RemoveDuplicateResolutions", TRUE))
 			{
@@ -470,9 +502,11 @@ void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 				PatchByte(0x7BAD2E + 1, 0);
 				PatchByte(0x7BAD70 + 1, 0);
 				InjectHook(0x7F343D, &D3D10ResolutionContainer::GetDisplayModes_hook);
+				LogInfo("D3D10 duplicate/interlaced resolution fix applied.");
 			}
 			break;
 		default:
+			LogError("Unknown executable version detected.");
 			return;
 	}
 
@@ -492,6 +526,10 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 		{
 			InitAddresses(DIGITAL_DX10, hinstDLL);
 		}
+	}
+	else if (fdwReason == DLL_PROCESS_DETACH)
+	{
+		ShutdownLogging();
 	}
 
 	return TRUE;

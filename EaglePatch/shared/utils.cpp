@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "logger.h"
 #include <xinput.h>
 
 void InitPrecisionTimer()
@@ -15,6 +16,7 @@ void InitPrecisionTimer()
 			if (pTimeBeginPeriod)
 			{
 				pTimeBeginPeriod(1);
+				LogInfo("Precision timer initialized with timeBeginPeriod(1).");
 			}
 		}
 	}
@@ -46,7 +48,7 @@ void LimitFramerate(int targetFps)
 	while (elapsedTime < targetFrameTime)
 	{
 		double remaining = targetFrameTime - elapsedTime;
-		if (remaining > 0.003)
+		if (remaining > 0.0015)
 		{
 			Sleep(1);
 		}
@@ -61,15 +63,20 @@ void LimitFramerate(int targetFps)
 	lastTime = currentTime;
 }
 
-void ApplyCpuCoreLimit()
+void ApplyCpuCoreLimit(int maxCores)
 {
 	DWORD_PTR processAffinityMask, systemAffinityMask;
 	if (GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask))
 	{
-		// Limit to the first 4 active cores available in the system affinity mask
+		// Default to up to 8 logical cores/threads if enabled with 1 or <= 0,
+		// or custom requested count if > 1.
+		// 8 cores prevents the >16 threads Scimitar crash while ensuring plenty of headroom
+		// for game render, physics, audio and worker threads to prevent stutter/starvation.
+		size_t targetCores = (maxCores > 1) ? (size_t)maxCores : 8;
+
 		DWORD_PTR newMask = 0;
 		size_t coresSelected = 0;
-		for (size_t i = 0; i < sizeof(DWORD_PTR) * 8 && coresSelected < 4; i++)
+		for (size_t i = 0; i < sizeof(DWORD_PTR) * 8 && coresSelected < targetCores; i++)
 		{
 			if (systemAffinityMask & ((DWORD_PTR)1 << i))
 			{
@@ -80,6 +87,12 @@ void ApplyCpuCoreLimit()
 		if (newMask != 0)
 		{
 			SetProcessAffinityMask(GetCurrentProcess(), newMask);
+			LogInfo("Applied CPU affinity limit to first %zu active cores (Mask: 0x%IX, requested: %d).",
+				coresSelected, newMask, maxCores);
 		}
+	}
+	else
+	{
+		LogWarn("Failed to get process affinity mask.");
 	}
 }
