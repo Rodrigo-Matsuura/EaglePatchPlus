@@ -2,7 +2,7 @@
 
 EaglePatch+AC1 is an ASI plugin that fixes a number of issues in Assassin's Creed: Director's Cut Edition
 
-**Plugin version:** 1.4
+**Plugin version:** 1.5
 
 <img src="/assets/EaglePatch+AC1.png" alt="EaglePatch+AC1">
 
@@ -48,7 +48,7 @@ SHA-1: 601475FD5EFA02BBAE80D1C06DFA25A0A1E7FD2F
 
 EaglePatch+AC2 is an ASI plugin that fixes a number of issues in Assassin's Creed II
 
-**Plugin version:** 1.4
+**Plugin version:** 1.5
 
 <img src="/assets/EaglePatch+AC2.png" alt="EaglePatch+AC2">
 

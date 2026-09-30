@@ -430,7 +430,7 @@ void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 	bool enableLogging = get_private_profile_bool("EnableLogging", FALSE);
 	InitLogging(hModule, enableLogging, enableConsole);
 
-	LogInfo("EaglePatch+ AC1 initialized (Version: 1.4, Module: 0x%p, Executable: %s)",
+	LogInfo("EaglePatch+ AC1 initialized (Version: 1.5, Module: 0x%p, Executable: %s)",
 		hModule, exeVersion == DIGITAL_DX9 ? "Digital DX9" : "Digital DX10");
 
 #ifdef INCLUDE_CONSOLE

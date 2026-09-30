@@ -1,6 +1,6 @@
 EaglePatch+AC1 is an ASI plugin that fixes a number of issues in Assassin's Creed: Director's Cut Edition
 
-Plugin version: 1.4
+Plugin version: 1.5
 
 Features:
 - Improved shadow map size from 1024 to 4096 (only when shadow quality is maxed out in game's settings; can be disabled in ini)
