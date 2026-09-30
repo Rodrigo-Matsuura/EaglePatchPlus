@@ -71,7 +71,14 @@ UINT get_private_profile_int(LPCTSTR lpKeyName, INT nDefault)
 	wchar_t wSection[128];
 	const wchar_t* pwKeyName = AnsiToWideHelper(lpKeyName, wKeyName, 128);
 	const wchar_t* pwSection = AnsiToWideHelper(DLL_NAME, wSection, 128);
-	return GetPrivateProfileIntW(pwSection, pwKeyName, nDefault, ini_path);
+
+	const INT sentinel = (nDefault == 0x7FFFFFFF) ? 0x7FFFFFFE : 0x7FFFFFFF;
+	INT val = (INT)GetPrivateProfileIntW(pwSection, pwKeyName, sentinel, ini_path);
+	if (val == sentinel && _wcsicmp(pwSection, L"EaglePatch") != 0)
+	{
+		val = (INT)GetPrivateProfileIntW(L"EaglePatch", pwKeyName, nDefault, ini_path);
+	}
+	return (UINT)val;
 }
 
 UINT get_private_profile_bool(LPCTSTR lpKeyName, INT nDefault)
@@ -117,7 +124,14 @@ DWORD get_private_profile_string(LPCTSTR lpKeyName, LPCTSTR lpDefault, LPTSTR lp
 			return 0;
 	}
 
-	GetPrivateProfileStringW(pwSection, pwKeyName, pwDefault, wReturnedString, nSize, ini_path);
+	static const wchar_t sentinel[] = L"__EP_KEY_NOT_FOUND__";
+	GetPrivateProfileStringW(pwSection, pwKeyName, sentinel, wReturnedString, nSize, ini_path);
+	if (wcscmp(wReturnedString, sentinel) == 0 && _wcsicmp(pwSection, L"EaglePatch") != 0)
+	{
+		// Fallback to generic [EaglePatch] section if key not found in specific section
+		GetPrivateProfileStringW(L"EaglePatch", pwKeyName, pwDefault, wReturnedString, nSize, ini_path);
+	}
+
 	WideToAnsi(wReturnedString, lpReturnedString, nSize);
 
 	if (wReturnedString != wStackBuffer)

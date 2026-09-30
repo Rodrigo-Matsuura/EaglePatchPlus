@@ -1,0 +1,17 @@
+# Auto-detect text files and normalize line endings to LF on commit
+* text=auto
+
+# Windows game configuration and readme files should always use CRLF
+*.ini text eol=crlf
+*.txt text eol=crlf
+
+# Shell scripts must always use LF
+*.sh text eol=lf
+
+# Binary files
+*.png binary
+*.asi binary
+*.exe binary
+*.zip binary
+*.lib binary
+*.exp binary

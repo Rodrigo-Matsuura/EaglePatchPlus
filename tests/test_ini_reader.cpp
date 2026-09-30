@@ -71,7 +71,10 @@ static void TestIniReaderFileParsing()
 		"TestFloatComma2=0,75\n"
 		"TestFloatCommaSpaced=  2,25  \n"
 		"TestString1=KeyboardMouse2\n"
-		"TestStringSpaced=  CustomValue  \n";
+		"TestStringSpaced=  CustomValue  \n"
+		"\n[EaglePatch]\n"
+		"FallbackInt=99\n"
+		"FallbackString=FallbackSuccess\n";
 
 	fputs(iniContent, f);
 	fclose(f);
@@ -121,6 +124,12 @@ static void TestIniReaderFileParsing()
 	DWORD strLen = get_private_profile_string("TestString1", "", strBuf, sizeof(strBuf));
 	assert(strcmp(strBuf, "KeyboardMouse2") == 0);
 	assert(strLen == strlen("KeyboardMouse2"));
+
+	// Test fallback to [EaglePatch] generic section
+	assert(get_private_profile_int("FallbackInt", 0) == 99);
+	char fallbackBuf[64] = { 0 };
+	get_private_profile_string("FallbackString", "", fallbackBuf, sizeof(fallbackBuf));
+	assert(strcmp(fallbackBuf, "FallbackSuccess") == 0);
 
 	DeleteFileW(tempIniFile);
 	printf("[TEST] INI Reader File Parsing Tests Passed.\n");

@@ -1,0 +1,30 @@
+BasedOnStyle: Microsoft
+Language: Cpp
+Standard: c++14
+
+# Indentation and tabs
+UseTab: Always
+TabWidth: 4
+IndentWidth: 4
+
+# Braces style (Allman / Microsoft style)
+BreakBeforeBraces: Allman
+
+# Pointer and reference alignment
+PointerAlignment: Left
+
+# Line length
+ColumnLimit: 140
+
+# Prevent clang-format from reordering includes (important for windows.h dependencies)
+SortIncludes: false
+
+# Spaces
+SpaceAfterCStyleCast: false
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: false
+
+# Short blocks
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
