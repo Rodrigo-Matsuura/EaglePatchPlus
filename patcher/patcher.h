@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include <stdint.h>
 #include <new.h>
 #include <string.h>
 
@@ -52,6 +53,25 @@ public:
 #define MEMCMP8(offset, val) (GETMEM8(offset) == (uint8_t)(val))
 #define MEMCMP16(offset, val) (GETMEM16(offset) == (uint16_t)(val))
 #define MEMCMP32(offset, val) (GETMEM32(offset) == (uint32_t)(val))
+
+inline bool SafeMemcmp32(uintptr_t address, uint32_t val)
+{
+	if (!address)
+		return false;
+
+	MEMORY_BASIC_INFORMATION mbi;
+	if (VirtualQuery((LPCVOID)address, &mbi, sizeof(mbi)) == sizeof(mbi))
+	{
+		if (mbi.State == MEM_COMMIT && !(mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)))
+		{
+			if (address + sizeof(uint32_t) <= (uintptr_t)mbi.BaseAddress + mbi.RegionSize)
+			{
+				return *(const uint32_t*)address == val;
+			}
+		}
+	}
+	return false;
+}
 
 #pragma warning(disable : 4731) // -- suppress C4731:"frame pointer register 'ebp' modified by inline assembly code"
 

@@ -672,10 +672,29 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 	(void)lpReserved;
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
-		if (MEMCMP32(0x00414A54 + 1, 0x01CA6FC8))
+		if (SafeMemcmp32(0x00414A54 + 1, 0x01CA6FC8))
 			InitAddresses(DIGITAL_UPLAY, hinstDLL);
-		else if (MEMCMP32(0x004149F4 + 1, 0x01CA4FA0))
+		else if (SafeMemcmp32(0x004149F4 + 1, 0x01CA4FA0))
 			InitAddresses(RETAIL_1_01, hinstDLL);
+		else
+		{
+			init_private_profile(hinstDLL);
+			bool enableLogging = get_private_profile_bool("EnableLogging", FALSE);
+			if (enableLogging)
+			{
+				InitLogging(hinstDLL, true, false);
+				LogError("EaglePatch+ AC2: Unsupported game executable version or invalid memory signature detected. Patches safely aborted.");
+			}
+			if (get_private_profile_bool("NotifyOnUnsupportedVersion", TRUE))
+			{
+				NotifyUnsupportedVersion(
+					"EaglePatch+ AC2 - Unsupported Executable",
+					"EaglePatch+ could not identify this game executable version.\n"
+					"Patches were safely aborted to prevent the game from crashing.\n\n"
+					"Please verify that you are using a supported official version (Steam / Ubisoft Connect)."
+				);
+			}
+		}
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{

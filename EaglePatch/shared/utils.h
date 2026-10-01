@@ -1,7 +1,6 @@
 #pragma once
 
 #include <windows.h>
-#include <stdint.h>
 #include <xinput.h>
 #include "logger.h"
 
@@ -61,3 +60,4 @@ template<typename TPad> inline void CheckXInputReconnect(TPad* pad)
 }
 
 void ApplyCpuCoreLimit(int maxCores = 0);
+void NotifyUnsupportedVersion(const char* title, const char* message);

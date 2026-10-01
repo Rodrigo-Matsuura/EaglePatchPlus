@@ -518,13 +518,32 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 	(void)lpReserved;
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
-		if (MEMCMP32(0x00401375 + 1, 0x42d6)) // dx9
+		if (SafeMemcmp32(0x00401375 + 1, 0x42d6)) // dx9
 		{
 			InitAddresses(DIGITAL_DX9, hinstDLL);
 		}
-		else if (MEMCMP32(0x004013DE + 1, 0x428d)) // dx10
+		else if (SafeMemcmp32(0x004013DE + 1, 0x428d)) // dx10
 		{
 			InitAddresses(DIGITAL_DX10, hinstDLL);
+		}
+		else
+		{
+			init_private_profile(hinstDLL);
+			bool enableLogging = get_private_profile_bool("EnableLogging", FALSE);
+			if (enableLogging)
+			{
+				InitLogging(hinstDLL, true, false);
+				LogError("EaglePatch+ AC1: Unsupported game executable version or invalid memory signature detected. Patches safely aborted.");
+			}
+			if (get_private_profile_bool("NotifyOnUnsupportedVersion", TRUE))
+			{
+				NotifyUnsupportedVersion(
+					"EaglePatch+ AC1 - Unsupported Executable",
+					"EaglePatch+ could not identify this game executable version.\n"
+					"Patches were safely aborted to prevent the game from crashing.\n\n"
+					"Please verify that you are using a supported official version (Steam / GOG)."
+				);
+			}
 		}
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)

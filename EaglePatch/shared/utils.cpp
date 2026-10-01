@@ -30,24 +30,32 @@ void LimitFramerate(int targetFps)
 	InitPrecisionTimer();
 
 	static LARGE_INTEGER frequency = {};
-	static LARGE_INTEGER lastTime = {};
+	static LARGE_INTEGER targetTime = {};
 
 	if (frequency.QuadPart == 0)
 	{
 		QueryPerformanceFrequency(&frequency);
-		QueryPerformanceCounter(&lastTime);
+		QueryPerformanceCounter(&targetTime);
 		return;
 	}
 
-	double targetFrameTime = 1.0 / (double)targetFps;
+	LONGLONG targetTicksPerFrame = (LONGLONG)((double)frequency.QuadPart / (double)targetFps);
+	targetTime.QuadPart += targetTicksPerFrame;
+
 	LARGE_INTEGER currentTime;
 	QueryPerformanceCounter(&currentTime);
 
-	double elapsedTime = (double)(currentTime.QuadPart - lastTime.QuadPart) / (double)frequency.QuadPart;
-
-	while (elapsedTime < targetFrameTime)
+	// If we fell significantly behind (e.g. loading screen, window moved, lag spike > 2 frames),
+	// clamp target time to current time to avoid running unthrottled to catch up.
+	if (currentTime.QuadPart > targetTime.QuadPart + (targetTicksPerFrame * 2))
 	{
-		double remaining = targetFrameTime - elapsedTime;
+		targetTime = currentTime;
+		return;
+	}
+
+	while (currentTime.QuadPart < targetTime.QuadPart)
+	{
+		double remaining = (double)(targetTime.QuadPart - currentTime.QuadPart) / (double)frequency.QuadPart;
 		if (remaining > 0.0015)
 		{
 			Sleep(1);
@@ -57,10 +65,7 @@ void LimitFramerate(int targetFps)
 			YieldProcessor();
 		}
 		QueryPerformanceCounter(&currentTime);
-		elapsedTime = (double)(currentTime.QuadPart - lastTime.QuadPart) / (double)frequency.QuadPart;
 	}
-
-	lastTime = currentTime;
 }
 
 void ApplyCpuCoreLimit(int maxCores)
@@ -94,5 +99,23 @@ void ApplyCpuCoreLimit(int maxCores)
 	else
 	{
 		LogWarn("Failed to get process affinity mask.");
+	}
+}
+
+void NotifyUnsupportedVersion(const char* title, const char* message)
+{
+	typedef int (WINAPI *pfnMessageBoxA)(HWND, LPCSTR, LPCSTR, UINT);
+	HMODULE hUser32 = GetModuleHandleA("user32.dll");
+	if (!hUser32)
+	{
+		hUser32 = LoadLibraryA("user32.dll");
+	}
+	if (hUser32)
+	{
+		pfnMessageBoxA pMessageBoxA = (pfnMessageBoxA)GetProcAddress(hUser32, "MessageBoxA");
+		if (pMessageBoxA)
+		{
+			pMessageBoxA(NULL, message, title, MB_OK | MB_ICONWARNING);
+		}
 	}
 }

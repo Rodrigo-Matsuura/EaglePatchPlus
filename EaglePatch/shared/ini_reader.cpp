@@ -158,6 +158,12 @@ FLOAT get_private_profile_float(LPCTSTR lpKeyName, LPCTSTR lpDefault)
 
 void init_private_profile(HMODULE hModule)
 {
+	if (!hModule)
+	{
+		GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCWSTR)&init_private_profile, &hModule);
+	}
+
 	GetModuleFileNameW(hModule, ini_path, sizeof(ini_path) / sizeof(wchar_t));
 	wchar_t* p = wcsrchr(ini_path, L'.');
 	if (p)
