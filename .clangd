@@ -1,5 +1,5 @@
 CompileFlags:
-  CompilationDatabase: /home/matsu/EaglePatch
+  CompilationDatabase: .
   Add:
     - -target
     - i686-pc-windows-msvc
@@ -9,8 +9,8 @@ CompileFlags:
     - -fms-compatibility
     - -fasm-blocks
     - -fmsc-version=1900
-    - -I/home/matsu/EaglePatch/patcher
-    - -I/home/matsu/EaglePatch/EaglePatch/shared
+    - -Ipatcher
+    - -IEaglePatch/shared
     - -isystem/usr/include/wine/msvcrt
     - -isystem/usr/include/wine/windows
     - -isystem/usr/include/wine/windows/ddk

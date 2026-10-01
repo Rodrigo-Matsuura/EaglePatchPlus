@@ -1,5 +1,9 @@
 # EaglePatch+AC1
 
+[![Build](https://github.com/Rodrigo-Matsuura/EaglePatch/actions/workflows/build.yml/badge.svg)](https://github.com/Rodrigo-Matsuura/EaglePatch/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/Rodrigo-Matsuura/EaglePatch?color=blue)](https://github.com/Rodrigo-Matsuura/EaglePatch/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20(Proton)-lightgrey)](https://github.com/Rodrigo-Matsuura/EaglePatch)
+
 EaglePatch+AC1 is an ASI plugin that fixes a number of issues in Assassin's Creed: Director's Cut Edition
 
 **Plugin version:** 1.5
@@ -45,6 +49,10 @@ MD5: CA87753255E2D14B1F18BB737C643792
 SHA-1: 601475FD5EFA02BBAE80D1C06DFA25A0A1E7FD2F  
 
 # EaglePatch+AC2
+
+[![Build](https://github.com/Rodrigo-Matsuura/EaglePatch/actions/workflows/build.yml/badge.svg)](https://github.com/Rodrigo-Matsuura/EaglePatch/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/Rodrigo-Matsuura/EaglePatch?color=blue)](https://github.com/Rodrigo-Matsuura/EaglePatch/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20(Proton)-lightgrey)](https://github.com/Rodrigo-Matsuura/EaglePatch)
 
 EaglePatch+AC2 is an ASI plugin that fixes a number of issues in Assassin's Creed II
 

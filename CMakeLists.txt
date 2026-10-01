@@ -160,5 +160,19 @@ if(BUILD_TESTING)
     target_include_directories(EaglePatchTests PRIVATE EaglePatch/shared patcher)
     target_compile_definitions(EaglePatchTests PRIVATE WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS NOMINMAX)
     add_test(NAME EaglePatchTests COMMAND EaglePatchTests)
-endif()
+# ------------------------------------------------------------------------------
+# Target: Package Release
+# ------------------------------------------------------------------------------
+add_custom_target(package_release
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/dist/EaglePatch+AC1/scripts"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/dist/EaglePatch+AC2/scripts"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:EaglePatchPlusAC1>" "${CMAKE_SOURCE_DIR}/dist/EaglePatch+AC1/scripts/EaglePatchAC1.asi"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/EaglePatch/EaglePatchAC1.ini" "${CMAKE_SOURCE_DIR}/dist/EaglePatch+AC1/scripts/EaglePatchAC1.ini"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/EaglePatch/Readme - EaglePatch+AC1.txt" "${CMAKE_SOURCE_DIR}/dist/EaglePatch+AC1/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:EaglePatchPlusAC2>" "${CMAKE_SOURCE_DIR}/dist/EaglePatch+AC2/scripts/EaglePatchAC2.asi"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/EaglePatch/EaglePatchAC2.ini" "${CMAKE_SOURCE_DIR}/dist/EaglePatch+AC2/scripts/EaglePatchAC2.ini"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/EaglePatch/Readme - EaglePatch+AC2.txt" "${CMAKE_SOURCE_DIR}/dist/EaglePatch+AC2/"
+    DEPENDS EaglePatchPlusAC1 EaglePatchPlusAC2
+    COMMENT "Packaging EaglePatch+ release distribution to dist/..."
+)
 

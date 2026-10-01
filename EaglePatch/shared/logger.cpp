@@ -106,6 +106,8 @@ void LogMessageV(LogLevel level, const char* format, va_list args)
 	char formattedLine[1200];
 	FormatHelper(formattedLine, sizeof(formattedLine), "[%s] [%s] %s\n", timeBuf[0] ? timeBuf : "??", levelStr, msgBuffer);
 
+	OutputDebugStringA(formattedLine);
+
 	if (g_ConsoleLoggingEnabled)
 	{
 		printf("%s", formattedLine);

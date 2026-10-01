@@ -3,6 +3,7 @@ name: Build EaglePatch+
 on:
   push:
     branches: [ "main", "master" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main", "master" ]
 
@@ -68,18 +69,55 @@ jobs:
           Copy-Item $ac2.FullName dist/EaglePatch+AC2/scripts/EaglePatchAC2.asi
           Copy-Item EaglePatch/EaglePatchAC2.ini dist/EaglePatch+AC2/scripts/
           Copy-Item "EaglePatch/Readme - EaglePatch+AC2.txt" dist/EaglePatch+AC2/
-          Compress-Archive -Path dist/EaglePatch+AC1/* -DestinationPath dist/EaglePatch+AC1-Win32.zip
-          Compress-Archive -Path dist/EaglePatch+AC2/* -DestinationPath dist/EaglePatch+AC2-Win32.zip
+          Compress-Archive -Path dist/EaglePatch+AC1/* -DestinationPath dist/EaglePatch+AC1.zip
+          Compress-Archive -Path dist/EaglePatch+AC2/* -DestinationPath dist/EaglePatch+AC2.zip
         shell: pwsh
 
       - name: Upload AC1 Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: EaglePatch-AC1-Windows
-          path: dist/EaglePatch+AC1-Win32.zip
+          path: dist/EaglePatch+AC1.zip
 
       - name: Upload AC2 Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: EaglePatch-AC2-Windows
-          path: dist/EaglePatch+AC2-Win32.zip
+          path: dist/EaglePatch+AC2.zip
+
+  publish-release:
+    name: Publish Release Assets
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ build-linux-clang, build-windows-msvc ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Linux AC1
+        uses: actions/download-artifact@v4
+        with:
+          name: EaglePatch-AC1-Linux
+          path: release-artifacts/linux-ac1
+
+      - name: Download Linux AC2
+        uses: actions/download-artifact@v4
+        with:
+          name: EaglePatch-AC2-Linux
+          path: release-artifacts/linux-ac2
+
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p release-dist
+          cp release-artifacts/linux-ac1/EaglePatch+AC1.zip release-dist/EaglePatch+AC1.zip
+          cp release-artifacts/linux-ac2/EaglePatch+AC2.zip release-dist/EaglePatch+AC2.zip
+
+      - name: Attach Assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-dist/EaglePatch+AC1.zip
+            release-dist/EaglePatch+AC2.zip
+          generate_release_notes: true
