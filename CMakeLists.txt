@@ -160,6 +160,7 @@ if(BUILD_TESTING)
     target_include_directories(EaglePatchTests PRIVATE EaglePatch/shared patcher)
     target_compile_definitions(EaglePatchTests PRIVATE WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS NOMINMAX)
     add_test(NAME EaglePatchTests COMMAND EaglePatchTests)
+endif()
 # ------------------------------------------------------------------------------
 # Target: Package Release
 # ------------------------------------------------------------------------------
