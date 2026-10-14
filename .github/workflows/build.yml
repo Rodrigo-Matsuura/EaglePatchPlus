@@ -96,6 +96,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Download Windows AC1
+        uses: actions/download-artifact@v4
+        with:
+          name: EaglePatch-AC1-Windows
+          path: release-artifacts/windows-ac1
+
+      - name: Download Windows AC2
+        uses: actions/download-artifact@v4
+        with:
+          name: EaglePatch-AC2-Windows
+          path: release-artifacts/windows-ac2
+
       - name: Download Linux AC1
         uses: actions/download-artifact@v4
         with:
@@ -111,8 +123,10 @@ jobs:
       - name: Prepare Release Assets
         run: |
           mkdir -p release-dist
-          cp release-artifacts/linux-ac1/EaglePatch+AC1.zip release-dist/EaglePatch+AC1.zip
-          cp release-artifacts/linux-ac2/EaglePatch+AC2.zip release-dist/EaglePatch+AC2.zip
+          cp release-artifacts/windows-ac1/EaglePatch+AC1.zip release-dist/EaglePatch+AC1.zip
+          cp release-artifacts/windows-ac2/EaglePatch+AC2.zip release-dist/EaglePatch+AC2.zip
+          cp release-artifacts/linux-ac1/EaglePatch+AC1.zip release-dist/EaglePatch+AC1-Linux.zip
+          cp release-artifacts/linux-ac2/EaglePatch+AC2.zip release-dist/EaglePatch+AC2-Linux.zip
 
       - name: Attach Assets to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -120,4 +134,6 @@ jobs:
           files: |
             release-dist/EaglePatch+AC1.zip
             release-dist/EaglePatch+AC2.zip
+            release-dist/EaglePatch+AC1-Linux.zip
+            release-dist/EaglePatch+AC2-Linux.zip
           generate_release_notes: true

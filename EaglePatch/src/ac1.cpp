@@ -288,8 +288,13 @@ void __cdecl AddXenonPad()
 	scimitar::padXenon = new scimitar::PadXenon(0);
 	if (!scimitar::pPad->AddPad(scimitar::padXenon, scimitar::Pad::PadType::XenonPad, L"XInput Controller 1", 5, 5))
 	{
+		LogInfo("XInput controller 1 not added by engine (no controller connected or inactive). Safely releasing object.");
 		ac_delete(scimitar::padXenon, nullptr, nullptr);
 		scimitar::padXenon = nullptr;
+	}
+	else
+	{
+		LogInfo("XInput controller 1 successfully registered.");
 	}
 }
 

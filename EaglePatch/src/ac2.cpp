@@ -369,8 +369,13 @@ void __cdecl AddXenonPad()
 	scimitar::padXenon = new scimitar::PadXenon(0);
 	if (!scimitar::pPad->AddPad(scimitar::padXenon, scimitar::Pad::PadType::XenonPad, L"XInput Controller 1", 5, 5))
 	{
+		LogInfo("XInput controller 1 not added by engine (no controller connected or inactive). Safely releasing object.");
 		ac_delete(scimitar::padXenon, nullptr, nullptr);
 		scimitar::padXenon = nullptr;
+	}
+	else
+	{
+		LogInfo("XInput controller 1 successfully registered.");
 	}
 }
 
@@ -657,7 +662,7 @@ void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 			sAddresses::_BorderlessWindow_Engine_InitDirect3DDevice = 0x015d76d7;
 
 			ac_getNewDescriptor = (void*(__cdecl*)(uint32_t, uint32_t, uint32_t))0x149CAD0;
-			ac_getDeleteDescriptor = (uint32_t(__thiscall*)(void*, void*))0x4236A0;
+			ac_getDeleteDescriptor = (uint32_t(__thiscall*)(void*, void*))0x1466AE0;
 			Gear::MemHook::pRef = (Gear::MemHook***)0x223A3A4;
 			break;
 		default:
