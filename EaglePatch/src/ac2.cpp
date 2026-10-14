@@ -357,7 +357,6 @@ ASM(HackPlayerOptionsSaveData)
 
 		add esi, 0x3D
 
-		mov ecx, esi
 		call sAddresses::ClassSerializer_EndClass
 
 		retn
@@ -590,7 +589,7 @@ void InitAddresses(eExeVersion exeVersion, HMODULE hModule)
 	bool enableLogging = get_private_profile_bool("EnableLogging", FALSE);
 	InitLogging(hModule, enableLogging, enableConsole);
 
-	LogInfo("EaglePatch+ AC2 initialized (Version: 1.5.1, Module: 0x%p, Executable: %s)",
+	LogInfo("EaglePatch+ AC2 initialized (Version: 1.5.2, Module: 0x%p, Executable: %s)",
 		hModule, exeVersion == DIGITAL_UPLAY ? "Digital UPlay" : "Retail Akella 1.01");
 
 #ifdef INCLUDE_CONSOLE
